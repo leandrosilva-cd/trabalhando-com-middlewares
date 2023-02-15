@@ -10,29 +10,72 @@ app.use(cors());
 const users = [];
 
 function checksExistsUserAccount(request, response, next) {
-  const {username} = request.body;
+  const {username} = request.header;
 
   const usernameAlreadyExists = users.some((user) => user.username === username);
 
-  if (usernameAlreadyExists) {
+  if (!usernameAlreadyExists) {
     return response.status(400).json({ error: 'Username already exists' });
   }
 
-  request.username = username;
   return next();
 }
 
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
+  const {username} = request.header;
+  const user = users.find(user => user.username === username);
+
+  if(!user.pro) {
+    if(user.todos.length > 10) {
+      return response.status(400).json({ error: 'Maximun tasks reached in the free subscription!' });
+    }
+  }
+  request.user = user;
+
+  return next();
 }
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
+  const {username} = request.header;
+  const userExists = users.some(user => user.username === username);
+  const id = request.params;
+
+  if (!userExists) {
+    return response.status(400).json({ error: 'User does not exists' });
+  }
+  
+  const user = users.find(user => user.username === username);
+  const todoExists = user.todos.some(todo => todo.id === id);
+
+  if (!todoExists) {
+    return response.status(400).json({ error: 'To do does not exists' });
+  }
+
+  const todo = user.todos.find(todo => todo.id === id);
+  request.user = user;
+  request.todo = todo;
+
+
+  // if (userExists) {
+  //   const user = users.find(user => user.username === username);
+  //   const todoExists = user.todos.some(todo => todo.id === id);
+  //   if (todoExists) {
+  //     const todo = user.todos.find(todo => todo.id === id);
+  //     request.user = user;
+  //     request.todo = todo;
+  //   } else {
+  //     return response.status(400).json({ error: 'Task is not registered!' });
+  //   }
+  // } else {
+  //   return response.status(400).json({ error: 'Username is not registered!' });
+  // }
+
+  return next();
 }
 
 function findUserById(request, response, next) {
   const {id} = request.params;
-  const user = users.find(user => user.id == id);
+  const user = users.find(user => user.id === id);
 
   request.user = user;
   return next();
@@ -40,7 +83,7 @@ function findUserById(request, response, next) {
 
 app.post('/users', checksExistsUserAccount, (request, response) => {
   const {name} = request.body;
-  const {username} = request;
+  const {username} = request.body;
 
   const user = {
     id: uuidv4(),
